@@ -25,6 +25,7 @@ import org.apache.tinkerpop.gremlin.structure.util.ElementHelper;
 import org.apache.tinkerpop.gremlin.structure.util.Host;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -37,9 +38,31 @@ import java.util.Map;
 public class DetachedVertexProperty<V> extends DetachedElement<VertexProperty<V>> implements VertexProperty<V> {
 
     protected V value;
-    protected transient DetachedVertex vertex;
+    protected DetachedVertex vertex;
 
     private DetachedVertexProperty() {}
+
+    /**
+     * Overwrite the default serialization behavior to keep track of the {@link VertexProperty}'s vertex id.
+     */
+    private void writeObject(final java.io.ObjectOutputStream out) throws IOException {
+        out.writeObject(this.id);
+        out.writeObject(this.label);
+        out.writeObject(this.value);
+        out.writeObject(this.properties);
+        out.writeObject(this.vertex != null ? vertex.id : null);
+    }
+
+    private void readObject(final java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+        this.id = in.readObject();
+        this.label = (String) in.readObject();
+        this.value = (V) in.readObject();
+        this.properties = (Map) in.readObject();
+        final Object vertexId = in.readObject();
+        if (vertexId != null) {
+            vertex = DetachedVertex.build().setId(vertexId).create();
+        }
+    }
 
     protected DetachedVertexProperty(final VertexProperty<V> vertexProperty, final boolean withProperties) {
         super(vertexProperty);
